@@ -40,3 +40,22 @@ test('navigate to Myntra men footwear sneakers and save a screenshot', async ({ 
   const screenshotPath = path.join(screenshotsDir, 'myntra-men-footwear-sneakers.png');
   await page.screenshot({ path: screenshotPath, fullPage: true });
 });
+
+test('search for sneakers on Myntra and verify search results', async ({ page }) => {
+  await page.goto('https://www.myntra.com/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => undefined);
+
+  const acceptButton = page.getByRole('button', { name: /accept|allow/i }).first();
+  if ((await acceptButton.count()) > 0 && (await acceptButton.isVisible())) {
+    await acceptButton.click();
+  }
+
+  const searchBox = page.locator('input[placeholder*="Search"]');
+  await expect(searchBox).toBeVisible({ timeout: 20000 });
+  await searchBox.fill('sneakers');
+  await searchBox.press('Enter');
+
+  await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => undefined);
+  await expect(page).toHaveURL(/sneakers/, { timeout: 30000 });
+  await expect(page.locator('text=sneakers')).toBeVisible({ timeout: 30000 });
+});
