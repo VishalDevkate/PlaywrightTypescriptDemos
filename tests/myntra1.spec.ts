@@ -1,6 +1,6 @@
 /* 
 write a seperate test. 1. go to myntra.com 2. go to men->footwear->sneakers 3. take a screenshot and save in screenshots folder
-*/
+ */
 import { test, expect, Page } from '@playwright/test';
 import { mkdirSync } from 'fs';
 import path from 'path';
@@ -10,12 +10,22 @@ test.use({ browserName: 'firefox' });
 async function clickNavOrGoTo(page: Page, label: string, urlPath: string) {
   const link = page.locator('a').filter({ hasText: new RegExp(`^${label}$`, 'i') }).first();
 
-  if ((await link.count()) > 0 && (await link.isVisible())) {
-    await link.click({ timeout: 25000 });
-    return;
+  if ((await link.count()) > 0) {
+    try {
+      await link.waitFor({ state: 'visible', timeout: 25000 });
+      await Promise.all([
+        page.waitForURL(new RegExp(`${urlPath}`), { timeout: 60000 }),
+        link.click({ timeout: 25000 }),
+      ]);
+      await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => undefined);
+      return;
+    } catch (error) {
+      // If the click is intercepted or the element becomes stale, use the direct URL fallback.
+    }
   }
 
   await page.goto(`https://www.myntra.com${urlPath}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => undefined);
 }
 
 test('navigate to Myntra men footwear sneakers and save a screenshot', async ({ page }) => {
@@ -57,6 +67,15 @@ test('search for sneakers on Myntra and verify search results', async ({ page })
 
   await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => undefined);
   await expect(page).toHaveURL(/sneakers/, { timeout: 30000 });
+
+  // "text=sneakers" also matches the hidden nav dropdown link
+  // ("Sneakers" under the Men > Footwear menu), which stays in the DOM
+  // but isn't visible on the search results page. Scope to visible
+  // elements only, and additionally verify actual product results rendered.
+
+  await expect(
+    page.locator(':visible:has-text("sneakers")').first()
+  ).toBeVisible({ timeout: 30000 });
 
   const productCards = page.locator('.product-base, li.product-base');
   await expect(productCards.first()).toBeVisible({ timeout: 30000 });
