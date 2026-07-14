@@ -57,5 +57,5 @@ test('search for sneakers on Myntra and verify search results', async ({ page })
 
   await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => undefined);
   await expect(page).toHaveURL(/sneakers/, { timeout: 30000 });
-  await expect(page.locator('text=sneakers')).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('span.breadcrumbs-crumb', { hasText: /sneakers/i })).toBeVisible({ timeout: 30000 });
 });
